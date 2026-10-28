@@ -179,9 +179,9 @@ describe("the stack a terminal opens with", () => {
     expect(openingFontStack(TERMINAL_FONT_STACK, fonts(true))).toBe(TERMINAL_FONT_STACK);
   });
 
-  it("keeps the stack without a font set, or when the check throws", () => {
+  it("keeps the stack without a font set, and a stack that does not name the face", () => {
     expect(openingFontStack(TERMINAL_FONT_STACK, undefined)).toBe(TERMINAL_FONT_STACK);
-    expect(openingFontStack(TERMINAL_FONT_STACK, { check: () => { throw new SyntaxError("bad font"); } })).toBe(TERMINAL_FONT_STACK.replace(`"${MONO_FAMILY}", `, ""));
+    expect(openingFontStack("Menlo, monospace", fonts(false))).toBe("Menlo, monospace");
   });
 });
 

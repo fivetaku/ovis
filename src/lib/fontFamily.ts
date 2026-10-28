@@ -167,25 +167,20 @@ export function measurableFontStack(stack: string, widths: FontWidths | null = b
  */
 export function openingFontStack(stack: string, fonts: Pick<FontFaceSet, "check"> | undefined = typeof document === "undefined" ? undefined : document.fonts): string {
   if (!fonts || !stack.includes(MONO_FONT)) return stack;
-  let loaded = false;
-  try {
-    loaded = fonts.check(`13px ${MONO_FONT}`, "M");
-  } catch {
-    loaded = false;
-  }
-  return loaded ? stack : stack.split(",").map((name) => name.trim()).filter((name) => name !== MONO_FONT).join(", ");
+  return fonts.check(`13px ${MONO_FONT}`, "M") ? stack : stack.split(",").map((name) => name.trim()).filter((name) => name !== MONO_FONT).join(", ");
 }
 
 /**
- * Resolves once the faces that draw the stack's Latin have loaded or failed, with no timeout: a
- * bundled face slower than loadFontStack's is set when it arrives. A font that draws the Latin ahead
- * of the bundled face (one typed in Settings) leaves it unfetched.
+ * Resolves once the bundled Latin face has loaded or failed, with no timeout: a face slower than
+ * loadFontStack's wait is set when it arrives. Its own load, not the stack's: the font set's load
+ * rejects as soon as any face it asks for fails (a typed font's subset that is not found), which
+ * would end the wait while the bundled face still loads.
  */
-export async function stackArrived(stack: string, sizePx: number): Promise<void> {
+export async function monoFaceArrived(sizePx: number): Promise<void> {
   const fonts = typeof document === "undefined" ? undefined : document.fonts;
   if (!fonts || typeof fonts.load !== "function") return;
   try {
-    await fonts.load(`${sizePx}px ${stack}`, "M");
+    await fonts.load(`${sizePx}px ${MONO_FONT}`, "M");
   } catch {
     /* a face that fails leaves the fallback, as measured */
   }

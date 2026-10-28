@@ -50,6 +50,7 @@ export interface TerminalMountDeps {
   activeRef: RefObject<boolean>;
   barKeyRef: RefObject<{ key: string; chord: string | null; } | null>;
   baseFontRef: RefObject<number>;
+  pinchingRef: RefObject<boolean>;
   cachedRef: RefObject<boolean>;
   cachedReleaseRef: RefObject<boolean>;
   cancelLeaveRef: RefObject<() => void>;
@@ -165,7 +166,7 @@ export interface TerminalMountDeps {
 }
 
 export function useTerminalMount(deps: TerminalMountDeps): void {
-  const { activeRef, barKeyRef, baseFontRef, cachedRef, cachedReleaseRef, cancelLeaveRef, cancelTouchRef, chatMountedRef, chatOutputRef, chatViewRef, clearModifiers, clipboardTimerRef, coarseRef, commitPendingText, composingRef, compositionCommitPendingRef, deferAttachRef, draftHeldForRef, draftPaneRef, endedRef, findOpenRef, fitRef, fittedRef, fixedGridRef, followCursorRef, followRef, frameGateRef, heldRef, hostRef, hyperlinksRef, keyboardHoldsRef, keyboardToggleFocusRef, leaveRef, lineScroll, machineId, machineSessions, mirroredRef, mirrorWrapRef, modifiersRef, modifyOtherKeysRef, narrowFontRef, noteClipboard, observeRef, onChatSuggestion, onInputRowFrameRef, onRoleAckRef, onServerMessageRef, openFileRef, openWebRef, osc52AllowedRef, outputTargetRef, palette, paneRef, pendingEpochRef, pendingScopeRef, pendingSubmissionsRef, pinchBadgeRef, pinchStatusRef, presentationRef, presentedRef, reassertIfStaleRef, reattachRef, redrawGreeting, releaseAwayRef, idleReleaseRef, setIdleView, releaseRef, releasedRef, retireOutputRef, secretRef, sessionRef, setChatInvalidation, setChatRefresh, setChatSent, setComposing, setConnected, setConnectedBefore, setConversationPushes, setDraft, setEnded, setHeld, setInputError, setInputReady, setObserving, setOutputError, setOutputReady, setParsedTarget, setReleased, setSecret, setSelectionQuote, setTerminal, setUnsupported, setWatching, sharedGridRef, shortcutSettings, shownRef, sizesPty, socketRef, stackRef, stalledRef, stopKeyRef, submitRetention, t, tRef, termRef, terminalFontSize, theme, updateSettings, uploadFileRef, watchingRef, wheelStateRef } = deps;
+  const { activeRef, barKeyRef, baseFontRef, pinchingRef, cachedRef, cachedReleaseRef, cancelLeaveRef, cancelTouchRef, chatMountedRef, chatOutputRef, chatViewRef, clearModifiers, clipboardTimerRef, coarseRef, commitPendingText, composingRef, compositionCommitPendingRef, deferAttachRef, draftHeldForRef, draftPaneRef, endedRef, findOpenRef, fitRef, fittedRef, fixedGridRef, followCursorRef, followRef, frameGateRef, heldRef, hostRef, hyperlinksRef, keyboardHoldsRef, keyboardToggleFocusRef, leaveRef, lineScroll, machineId, machineSessions, mirroredRef, mirrorWrapRef, modifiersRef, modifyOtherKeysRef, narrowFontRef, noteClipboard, observeRef, onChatSuggestion, onInputRowFrameRef, onRoleAckRef, onServerMessageRef, openFileRef, openWebRef, osc52AllowedRef, outputTargetRef, palette, paneRef, pendingEpochRef, pendingScopeRef, pendingSubmissionsRef, pinchBadgeRef, pinchStatusRef, presentationRef, presentedRef, reassertIfStaleRef, reattachRef, redrawGreeting, releaseAwayRef, idleReleaseRef, setIdleView, releaseRef, releasedRef, retireOutputRef, secretRef, sessionRef, setChatInvalidation, setChatRefresh, setChatSent, setComposing, setConnected, setConnectedBefore, setConversationPushes, setDraft, setEnded, setHeld, setInputError, setInputReady, setObserving, setOutputError, setOutputReady, setParsedTarget, setReleased, setSecret, setSelectionQuote, setTerminal, setUnsupported, setWatching, sharedGridRef, shortcutSettings, shownRef, sizesPty, socketRef, stackRef, stalledRef, stopKeyRef, submitRetention, t, tRef, termRef, terminalFontSize, theme, updateSettings, uploadFileRef, watchingRef, wheelStateRef } = deps;
 
     // Where this terminal is: its pane, and whether it is active, presented, shown and not the chat view.
     // Counted on every commit that changes it: an explicit copy still waiting for herdr's text is
@@ -1635,7 +1636,7 @@ export function useTerminalMount(deps: TerminalMountDeps): void {
         touchPixels = 0;
         tracking = false;
       };
-      let pinch: { first: number; second: number; startSize: number; startDistance: number; size: number } | null = null;
+      let pinch: { first: number; second: number; startSize: number; startDistance: number; size: number; startCols: number; startRows: number } | null = null;
       // from a second finger until every finger lifts: the stroke is a pinch, never a scroll
       let pinchStroke = false;
       let pinchWatchPending = false;
@@ -1660,11 +1661,15 @@ export function useTerminalMount(deps: TerminalMountDeps): void {
       };
       const finishPinch = (save: boolean): void => {
         const finished = pinch;
+        pinchingRef.current = false;
         if (finished && (!save || finished.size === finished.startSize)) applyLiveFont(finished.startSize);
         pinch = null;
         const current = paneRef.current;
         if (pinchWatchPending && current && releasedRef.current && watchingRef.current) socket.watch(current, term.cols, term.rows);
         pinchWatchPending = false;
+        // a pinch that keeps its size sizes no pty, unless the grid changed under it (the terminal's face arrived mid-pinch)
+        if (finished && !(save && finished.size !== finished.startSize) && (term.cols !== finished.startCols || term.rows !== finished.startRows)
+            && current && inUse() && !adopted() && !chatViewRef.current && sizesPty()) socket.resize(current, term.cols, term.rows, true);
         if (finished && save && finished.size !== finished.startSize) {
           // a pinch can end after the pane went behind a sibling of its split: it saves the size, sizing no pty
           if (current && inUse() && !adopted() && !chatViewRef.current && sizesPty()) socket.resize(current, term.cols, term.rows, true);
@@ -1710,7 +1715,8 @@ export function useTerminalMount(deps: TerminalMountDeps): void {
               !host.contains(a.target as Node) || !host.contains(b.target as Node) ||
               spread(a, b) <= 0) return;
           const startSize = baseFontRef.current;
-          pinch = { first: a.identifier, second: b.identifier, startSize, startDistance: spread(a, b), size: startSize };
+          pinch = { first: a.identifier, second: b.identifier, startSize, startDistance: spread(a, b), size: startSize, startCols: term.cols, startRows: term.rows };
+          pinchingRef.current = true;
           if (pinchBadgeRef.current) {
             pinchBadgeRef.current.textContent = `${startSize}px`;
             pinchBadgeRef.current.hidden = false;
