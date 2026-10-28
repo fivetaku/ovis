@@ -170,6 +170,19 @@ export function openingFontStack(stack: string, fonts: Pick<FontFaceSet, "check"
   return fonts.check(`13px ${MONO_FONT}`, "M") ? stack : stack.split(",").map((name) => name.trim()).filter((name) => name !== MONO_FONT).join(", ");
 }
 
+/** Settles once, when a terminal's first font is set: the face it was waited for within loadFontStack's bound, or the fallback. */
+export interface FontSettled {
+  readonly done: boolean;
+  readonly settled: Promise<void>;
+  settle(): void;
+}
+
+export function fontSettled(): FontSettled {
+  const { promise, resolve } = Promise.withResolvers<void>();
+  const signal = { done: false, settled: promise, settle: () => { signal.done = true; resolve(); } };
+  return signal;
+}
+
 /**
  * Resolves once the bundled Latin face has loaded or failed, with no timeout: a face slower than
  * loadFontStack's wait is set when it arrives. Its own load, not the stack's: the font set's load

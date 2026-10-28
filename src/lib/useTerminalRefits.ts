@@ -1,6 +1,6 @@
 import { useEffect, useRef, type RefObject } from "react";
 import { terminalTheme, type Palette, type ResolvedTheme } from "./settings.ts";
-import { loadFontStack, measurableFontStack, monoFaceArrived, openingFontStack, terminalFontStack } from "./fontFamily.ts";
+import { type FontSettled, loadFontStack, measurableFontStack, monoFaceArrived, openingFontStack, terminalFontStack } from "./fontFamily.ts";
 import { modalOpen } from "./focus.ts";
 import { inUse } from "./paneTerminalShared.ts";
 import { fitLineHeight } from "./terminalLineHeight.ts";
@@ -14,6 +14,7 @@ export interface TerminalRefitsDeps {
   autoSelected: boolean;
   baseFontRef: RefObject<number>;
   pinchingRef: RefObject<boolean>;
+  fontSettledRef: RefObject<FontSettled>;
   chatView: boolean;
   chatViewRef: RefObject<boolean>;
   coarseRef: RefObject<boolean>;
@@ -41,7 +42,7 @@ export interface TerminalRefitsDeps {
 }
 
 export function useTerminalRefits(deps: TerminalRefitsDeps): void {
-  const { activeRef, autoSelected, baseFontRef, pinchingRef, chatView, chatViewRef, coarseRef, findOpenRef, fitRef, fittedRef, fixedGridRef, follow, followCursorRef, keyboardHoldsRef, narrowFont, narrowFontFitted, observeRef, palette, paneRef, peekRef, sharedGridRef, shown, sizesPty, socketRef, termRef, terminalFontFamily, terminalFontSize, theme } = deps;
+  const { activeRef, autoSelected, baseFontRef, pinchingRef, fontSettledRef, chatView, chatViewRef, coarseRef, findOpenRef, fitRef, fittedRef, fixedGridRef, follow, followCursorRef, keyboardHoldsRef, narrowFont, narrowFontFitted, observeRef, palette, paneRef, peekRef, sharedGridRef, shown, sizesPty, socketRef, termRef, terminalFontFamily, terminalFontSize, theme } = deps;
   // the theme follows the settings without a remount
   useEffect(() => {
     const term = termRef.current;
@@ -89,6 +90,8 @@ export function useTerminalRefits(deps: TerminalRefitsDeps): void {
     // A face slower than the load's timeout is set when it arrives, however late
     void loadFontStack(fontFamily, terminalFontSize).then(() => {
       apply();
+      // the first fit and the pty's first size waited for this font (usePaneAttach.ts)
+      fontSettledRef.current.settle();
       if (openingFontStack(fontFamily) !== fontFamily) void monoFaceArrived(terminalFontSize).then(apply);
     });
     return () => { superseded = true; };
