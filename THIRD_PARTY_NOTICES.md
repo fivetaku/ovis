@@ -1464,10 +1464,11 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
 
 ## JetBrains Mono
 
-`src/fonts/JetBrainsMono-Regular.woff2` is `fonts/webfonts/JetBrainsMono-Regular.woff2` from the
-[JetBrains Mono](https://github.com/JetBrains/JetBrainsMono) v2.304 release, unchanged. It draws code in
-the chat and the interface (the stylesheet loads it under the family name "JetBrains Mono Web"; the
-terminal does not use it), under the SIL Open Font License 1.1 below (the release's `OFL.txt`).
+`src/fonts/JetBrainsMono-Regular.woff2` and `src/fonts/JetBrainsMono-Bold.woff2` are
+`fonts/webfonts/JetBrainsMono-Regular.woff2` and `fonts/webfonts/JetBrainsMono-Bold.woff2` from the
+[JetBrains Mono](https://github.com/JetBrains/JetBrainsMono) v2.304 release, unchanged. They draw the
+terminal's Latin and the code in the chat and the interface (the stylesheet loads them under the family
+name "JetBrains Mono Web"), under the SIL Open Font License 1.1 below (the release's `OFL.txt`).
 
 ```
 Copyright 2020 The JetBrains Mono Project Authors (https://github.com/JetBrains/JetBrainsMono)

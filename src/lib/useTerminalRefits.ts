@@ -1,6 +1,6 @@
 import { useEffect, useRef, type RefObject } from "react";
 import { terminalTheme, type Palette, type ResolvedTheme } from "./settings.ts";
-import { loadFontStack, measurableFontStack, TERMINAL_FONT_STACK, terminalFontStack } from "./fontFamily.ts";
+import { loadFontStack, measurableFontStack, openingFontStack, stackArrived, terminalFontStack } from "./fontFamily.ts";
 import { modalOpen } from "./focus.ts";
 import { inUse } from "./paneTerminalShared.ts";
 import { fitLineHeight } from "./terminalLineHeight.ts";
@@ -61,7 +61,9 @@ export function useTerminalRefits(deps: TerminalRefitsDeps): void {
       // a newer font, or an unmounted terminal, took over while the faces loaded
       if (superseded || termRef.current !== term) return;
       baseFontRef.current = terminalFontSize;
-      const family = measurableFontStack(fontFamily);
+      // only a face that has loaded: one still loading would be measured as its fallback, so it is
+      // set once it arrives (below)
+      const family = measurableFontStack(openingFontStack(fontFamily));
       if (term.options.fontSize === terminalFontSize && term.options.fontFamily === family) return;
       term.options.fontSize = terminalFontSize;
       term.options.fontFamily = family;
@@ -78,8 +80,12 @@ export function useTerminalRefits(deps: TerminalRefitsDeps): void {
       const pane = paneRef.current;
       if (pane && sizesPty() && inUse()) socketRef.current?.resize(pane, term.cols, term.rows, true);
     };
-    if (fontFamily === TERMINAL_FONT_STACK) apply();
-    else void loadFontStack(fontFamily, terminalFontSize).then(apply);
+    // the built-in stack too: its first text font is the bundled face, which the terminal opened without until it loaded.
+    // A face slower than the load's timeout is set when it arrives, however late
+    void loadFontStack(fontFamily, terminalFontSize).then(() => {
+      apply();
+      if (openingFontStack(fontFamily) !== fontFamily) void stackArrived(fontFamily, terminalFontSize).then(apply);
+    });
     return () => { superseded = true; };
   }, [terminalFontSize, fontFamily]);
 

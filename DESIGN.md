@@ -541,10 +541,17 @@ The values are the ones in `src/styles.css`. Every token but `--fs-input` is `ca
   Latin and Korean only. Kanji and Chinese text fall through `--font-ui` to the device's sans-serif,
   so a Japanese line is kana in Pretendard beside kanji in the device's face, and Chinese is
   the device's face almost throughout. The app ships no Japanese or Chinese face.
-- JetBrains Mono regular is the code face of the chat and the chrome, loaded under the family
-  name `"JetBrains Mono Web"`. The name is the app's own so that the terminal never takes it:
-  xterm's stack (`src/lib/fontFamily.ts`) names `"JetBrains Mono"`, sizes every cell from the
-  first font that matches, and keeps meaning the copy installed on the device.
+- JetBrains Mono (regular and bold) is the code face of the terminal, the chat and the chrome,
+  loaded under the family name `"JetBrains Mono Web"` from the bundled files only. It is the
+  terminal's first text font on every device (`src/lib/fontFamily.ts`), so Chrome, Safari (the
+  PWA), Ovis for Mac, Windows, Linux and a phone draw the same cell and row and hold the same grid:
+  before, each device's own font sized it (Menlo, Consolas, Noto Sans Mono CJK KR), and an
+  installed JetBrains Mono drew in Chrome while Safari and Ovis for Mac's canvas could not see it,
+  so the same Mac showed 17px rows in Chrome and 16.5px in the app. It is never a `local()` copy,
+  which the app's canvas cannot measure either. A font typed in Settings still goes ahead of it. The
+  terminal opens without it until it has loaded and the font effect then sets it, as for a typed
+  font: xterm measures a cell once, when the family is set. Zed likewise draws its terminal in a
+  face it ships (`.ZedMono`) rather than the system's.
 - Ovis Hangul Mono is the terminal's Hangul: the syllables and compatibility jamo of D2Coding
   1.3.2, renamed because its license reserves the name, 265 KB regular and 277 KB bold, each
   fetched only once a pane prints Korean that reaches it (`unicode-range`, `PaneTerminal.css`): a
